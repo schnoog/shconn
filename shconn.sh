@@ -10,6 +10,8 @@ export default_to_uppercase=true
 SCRIPTPATH=$(dirname "$(realpath $0)")
 INIFILE="$SCRIPTPATH""/_shconn.conf"
 
+cd "$SCRIPTPATH"
+
 source ini-file-parser.sh
 
 process_ini_file "$INIFILE"
