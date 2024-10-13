@@ -1,0 +1,55 @@
+#
+#Groups: (sorted), displayed without first 2 chars
+#
+#Subgroups:
+#
+#
+#
+
+
+
+
+
+
+Hosts:
+  Groups:
+    02Networking:
+      01Fritzbox:
+        name: "Fritzbox"
+        ip: "192.168.178.1"
+        ssh: "root"
+      02FritzboxHAP:
+        name: "Fritzbox+HAProxy"
+        ip: "192.168.178.2"
+        ssh: "root"
+      03Repeater:
+        name: "FritzRep"
+        ip: "192.168.178.3"
+        ssh: "root"
+
+    01HomeNet:
+      01HomeserverRoot:
+        name: "Homeserver (root)"
+        ip: "192.168.178.3"
+        ssh: "root"
+        lftp: "root"
+      03Octoprint:
+        name: "Octoprint (root)"
+        ip: "192.168.178.35"
+        ssh: "root"
+        lftp: "root"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
