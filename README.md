@@ -4,4 +4,5 @@ Small bash script which provides an easy way to connect to ssh/sftp (by using lf
 
 
 
+
 uses https://github.com/mrbaseman/parse_yaml for parsing the config
