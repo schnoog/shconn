@@ -22,12 +22,6 @@ then
     SD="sudo"
 fi
 
-FILE="/etc/.shconfig.yml"
-if [ ! -f $FILE ]; then
-    $SD cp "$DEFCONFIG" "$FILE"
-    echo "inst to etc"
-fi
-
 $SD cp "$SCRIPTFN" /bin/
 
 
