@@ -6,7 +6,7 @@ SCRIPTPATH=$(dirname "$(realpath $0)")
 CONFIG="$SCRIPTPATH""/.shconfig.yml"
 
 
-FILE="~/.shconfig.yml"
+FILE="$HOME/.shconfig.yml"
 if [ -f $FILE ]; then
     CONFIG=$FILE
 else
