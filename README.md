@@ -3,6 +3,8 @@
 ## Description
 This Bash script facilitates connecting to multiple servers by providing a user-friendly menu interface. It reads server configurations from a YAML file and organizes them into tables for easy selection. Users can connect to their desired server via SSH or LFTP, with options for automatic selection based on server availability as defined in the YAML file.
 
+
+
 ## Usage
 1. Modify the configuration file located at `~/.shconfig.yml` or `/etc/.shconfig.yml` to define server details.
 2. Execute the script to display a list of servers.
@@ -14,6 +16,17 @@ This Bash script facilitates connecting to multiple servers by providing a user-
 - Debugging output for troubleshooting.
 - Automatic determination of the number of columns based on terminal width.
 - Support for SSH and LFTP connections.
+
+## Images
+### Example Output - 2 Columns
+![Example Output - 2 Columns](pics/example2col.png)
+
+### Example Output - 3 Columns
+![Example Output - 3 Columns](pics/example3col.png)
+
+### Example Output - 4 Columns
+![Example Output - 4 Columns](pics/example4col.png)
+
 
 ## Requirements
 - Bash shell
