@@ -1,11 +1,88 @@
 #!/usr/bin/bash
+
+# ===========================================================
+# Script Name: Server Connection Manager
+# Description:
+#   This Bash script facilitates connecting to multiple servers 
+#   by providing a user-friendly menu interface. It reads server 
+#   configurations from a YAML file and organizes them into 
+#   tables for easy selection. Users can connect to their desired 
+#   server via SSH or LFTP, with options for automatic selection 
+#   based on server availability as defined in the YAML file.
+#
+# Usage:
+# 1. Modify the configuration file located at 
+#    ~/.shconfig.yml or /etc/.shconfig.yml to define 
+#    server details.
+# 2. Execute the script to display a list of servers.
+# 3. Select the desired server by entering the corresponding 
+#    number.
+# 4. Choose the connection type (SSH or LFTP) if prompted.
+#
+# Features:
+# - Configurable number of columns for output tables
+# - Debugging output for troubleshooting
+# - Automatic determination of the number of columns based on terminal width
+# - Support for SSH and LFTP connections
+#
+# Requirements:
+# - Bash shell
+# - `ssh` and `lftp` commands available on the system
+# - YAML configuration file (.shconfig.yml) containing server details
+#
+# Configuration Variables:
+# - NUM_COLS: Number of columns to display in the server list.
+# - AUTO_COLS: Automatically calculate the number of columns 
+#   based on terminal width.
+# - DEBUGOUT: Enable or disable debug messages.
+# - GSTEP: Server index group offset.
+# - INPWAIT: Timeout for automatic connection type selection.
+#
+# Included Script:
+# - This script includes a YAML parsing function sourced from:
+#   https://github.com/mrbaseman/parse_yaml.git
+#   This external script is also licensed under the GPL3.
+#
+# License:
+#   This script is licensed under the GNU General Public License v3.0 (GPL3).
+#   See <http://www.gnu.org/licenses/> for details.
+# ===========================================================
+
+
+
+
+# ===========================================================
+# Basic settings
+# ===========================================================
+# Define number of columns per table
+NUM_COLS=2          # Change this to your preferred number of columns
+AUTO_COLS=false     # Calculating the number of columns based on the length 
+                    # of the labels and terminal width overwriting NUM_COLS
+DEBUGOUT=false      # Set to 'true' to enable debugging output, 'false' to disable
+GSTEP=100           # Group offset for server index. 
+                    # 10 = Group 1 starts with 1, Group 2 with 11, Group 3 with 21
+                    # 100 = Group 1 starts with 1, Group 2 with 101, Group 3 with 201
+INPWAIT=5           # if ssh and lftp are available for a server after this number of
+                    # seconds it will automatically switch to ssh
+
+
+
+# ===========================================================
+# Initialization
+# ===========================================================
 IFS="
 "
 SCRIPTPATH=$(dirname "$(realpath $0)")
 
+declare -A LABELARR
+declare -A SERVERARR
+
+# ===========================================================
+# Select config yaml
+# ===========================================================
+
+
 CONFIG="$SCRIPTPATH""/.shconfig.yml"
-
-
 FILE="$HOME/.shconfig.yml"
 if [ -f $FILE ]; then
     CONFIG=$FILE
@@ -18,7 +95,85 @@ else
 
 
 fi
+###############################################################################
+#
+# Functions
+#
+###############################################################################
 
+# ----------------------------------------
+# Function to Print Debug Messages
+# ----------------------------------------
+
+debug() {
+  if [ "$DEBUGOUT" = true ]; then
+    echo "DEBUG: $1"
+  fi
+}
+
+# ----------------------------------------
+# Function to Print Tables
+# ----------------------------------------
+
+print_tables() {
+  local current_label=1
+  local num_labels=${#LABELARR[@]}
+  
+  debug "Number of labels: $num_labels"
+  
+  while [ "$current_label" -le "$num_labels" ]; do
+    local end_label=$((current_label + NUM_COLS - 1))
+    
+    # Adjust if end_label exceeds num_labels
+    if [ "$end_label" -gt "$num_labels" ]; then
+      end_label="$num_labels"
+    fi
+    
+    debug "Processing columns $current_label to $end_label"
+    
+    # Prepare the output for column command
+    output=""
+    # Add headers
+    for col in $(seq "$current_label" "$end_label"); do
+      output+="${LABELARR[$col]}\t"
+    done
+    output+="\n"  # Newline after headers
+    
+    # Get the maximum number of rows for the current table
+    local max_row=0
+    for col in $(seq "$current_label" "$end_label"); do
+      for key in "${!SERVERARR[@]}"; do
+        IFS=',' read -r key_col key_row <<< "$key"
+        if [ "$key_col" -eq "$col" ]; then
+          if [ "$key_row" -gt "$max_row" ]; then
+            max_row="$key_row"
+          fi
+        fi
+      done
+    done
+
+    debug "Maximum row count for columns $current_label to $end_label is $max_row"
+
+    # Print each row
+    for row in $(seq 1 "$max_row"); do
+      for col in $(seq "$current_label" "$end_label"); do
+        local entry="${SERVERARR[$col,$row]}"
+        output+="${entry:- }\t"  # Add entry or empty space
+      done
+      output+="\n"  # Newline after each row
+    done
+
+    # Print the table using column
+    echo -e "$output" | column -s $'\t' -t
+
+    printf "\n"  # Add an empty line between tables
+    current_label=$((end_label + 1))
+  done
+}
+
+# ----------------------------------------
+# Function to get chunks out of the config
+# ----------------------------------------
 
 
 GetParts(){
@@ -28,6 +183,9 @@ GetParts(){
 }
 
 
+# ----------------------------------------
+# External function. Copied in to have only one file
+# ----------------------------------------
 
 ###############################################################################
 #
@@ -196,30 +354,53 @@ function parse_yaml {
     }"
 }
 
-# read yaml file
+
+# ----------------------------------------
+# Here ends the external function. 
+# ----------------------------------------
+
+
+
+
+###############################################################################
+#
+# Script execution
+#
+###############################################################################
+
+# ----------------------------------------
+# 
+# ----------------------------------------
+
+# ----------------------------------------
+# Reading yaml file
+# ----------------------------------------
 SETTINGS=$(parse_yaml "$CONFIG")
-
+# ----------------------------------------
+# 
+# ----------------------------------------
 GCOUNT=0
-GSTEP=10
-
-
-
-
-
-echo "Select server to connect to"
-
+MLEN=0
+MAXINROW=3
+NUMHEAD=0
+HL=""
+# ----------------------------------------
+# Going through groups
+# ----------------------------------------
 PARTS=$(GetParts "$SETTINGS" "3")
 for PART in $PARTS
 do
-#    echo "+++++++++++++++++++++++++++++++++++++++++++++++++*"
+    let NUMHEAD=$NUMHEAD+1
     SECOUT=$(echo "$PART" | cut -d "_" -f 3)
-    echo "${SECOUT:2}" 
-    
+    HEADERS+=( "${SECOUT:2}" )
+    HLABEL="${SECOUT:2}"
+    LABELARR[$NUMHEAD]="${SECOUT:2}"
         SCOUNT=0    
         SECS=$(GetParts "$SETTINGS" 4 | grep "^$PART" | uniq)
-#        echo "---------------------------"
-#        echo "$SECS"
-#        echo "---------------------------"
+# - # ---------------------------------------
+# - # Going though the servers and adding those of the group to the array
+# - # ---------------------------------------
+
         for SEC in $SECS
         do
             let SCOUNT=$SCOUNT+1
@@ -239,29 +420,74 @@ do
              then
                 LFTPIND="(+lftp)"
              fi
-
-            echo "    $SP("$IND") $hname $LFTPIND"
+            SERVERS+=( "$SP("$IND") $hname $LFTPIND" )
+            SSTR="$SP("$IND") $hname $LFTPIND"
+            SERVERARR[$NUMHEAD,$SCOUNT]="$SSTR"
+            CURRLEN=${#SSTR}
+            if [ $CURRLEN -gt $MLEN ]; then MLEN=$CURRLEN; fi
         done
+# - # ---------------------------------------
     let GCOUNT=$GCOUNT+$GSTEP
 done
+# ----------------------------------------
+
+
+# ----------------------------------------
+# Applying AUTO_COLS if true
+# ----------------------------------------
+
+if [ "$AUTO_COLS" = true ]
+then
+    terminal_width=$(tput cols)
+    NUM_COLS=$((terminal_width / MLEN))
+fi
+
+# ----------------------------------------
+# Ouput prompt
+# ----------------------------------------
+echo "Select server to connect to"
+print_tables
+
+# ----------------------------------------
+# Wait for answer
+# ----------------------------------------
 
 read ANSW
 
+
+# ----------------------------------------
+# Drop out if answer is empty
+# ----------------------------------------
+if [ "$ANSW" == "" ]
+then
+    echo "Not a valid selection (numbers only)"
+    exit 0
+fi
+
+
+
+
 GCOUNT=0
 SCOUNT=0
-INPWAIT=5
 FOUND=0
+# ----------------------------------------
+# Going through groups
+# ----------------------------------------
 PARTS=$(GetParts "$SETTINGS" "3")
 for PART in $PARTS
 do
-    
-        SCOUNT=0    
+        SCOUNT=0
+# - # ---------------------------------------
+# - # Going though the servers and find the one matching to answ
+# - # ---------------------------------------            
         SECS=$(GetParts "$SETTINGS" 4 | grep "^$PART" )
         for SEC in $SECS
         do
             let SCOUNT=$SCOUNT+1
             let IND=$SCOUNT+$GCOUNT
-
+# - # - # ---------------------------------------
+# - # - # We found it
+# - # - # ---------------------------------------
             if [ "$IND" == "$ANSW" ]
             then
                 FOUND=1
@@ -270,6 +496,11 @@ do
                     hip=$(echo "$HOSTDATA" | grep '_ip=' | cut -d "'" -f 2)
                     hssh=$(echo "$HOSTDATA" | grep '_ssh='| cut -d "'" -f 2)
                     hlftp=$(echo "$HOSTDATA" | grep '_lftp=' | cut -d "'" -f 2)
+
+# - # - # ---------------------------------------
+# - # - # if lftp is set, give the user the option to select it, with timeout to ssh default
+# - # - # --------------------------------------- 
+
                     if [ "$hlftp" != "" ]
                     then
                         echo "Connection type"
@@ -288,11 +519,19 @@ do
                         CS="$hssh""@""$hip"
                         ssh "$CS"
                     fi
+# - # - # ---------------------------------------                     
             fi
+# - # - # ---------------------------------------             
         done
+# - # ---------------------------------------         
     let GCOUNT=$GCOUNT+$GSTEP
 done
+# ----------------------------------------
 
+
+# ----------------------------------------
+# Server not found? Let the user know about it
+# ----------------------------------------
 if [ "$FOUND" != "1" ]
 then
     echo "-not a valid selection-"
