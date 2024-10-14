@@ -7,49 +7,110 @@
 #
 
 
-
-
-
-
 Hosts:
   Groups:
-    02Networking:
-      01Fritzbox:
-        name: "Fritzbox"
-        ip: "192.168.178.1"
-        ssh: "root"
-      02FritzboxHAP:
-        name: "Fritzbox+HAProxy"
-        ip: "192.168.178.2"
-        ssh: "root"
-      03Repeater:
-        name: "FritzRep"
-        ip: "192.168.178.3"
-        ssh: "root"
+    03Networking:
+      01ExampleRouter:
+        name: "Example Router"
+        ip: "192.168.1.1"
+        ssh: "admin"
+      02ExampleSwitch:
+        name: "Example Switch"
+        ip: "192.168.1.2"
+        ssh: "admin"
+      03ExampleFirewall:
+        name: "Example Firewall"
+        ip: "192.168.1.3"
+        ssh: "admin"
 
-    01HomeNet:
-      01HomeserverRoot:
-        name: "Homeserver (root)"
-        ip: "192.168.178.3"
-        ssh: "root"
-        lftp: "root"
-      03Octoprint:
-        name: "Octoprint (root)"
-        ip: "192.168.178.35"
+    01HomeNetwork:
+      01HomeServer:
+        name: "Home Server (root)"
+        ip: "192.168.1.10"
         ssh: "root"
         lftp: "root"
+      02MediaServer:
+        name: "Media Server (user)"
+        ip: "192.168.1.11"
+        ssh: "user"
+        lftp: "user"
+      03PrintServer:
+        name: "Print Server (root)"
+        ip: "192.168.1.12"
+        ssh: "root"
+        lftp: "root"
+      04SmartTV:
+        name: "Smart TV (guest)"
+        ip: "192.168.1.20"
+        ssh: "guest"
+        lftp: "guest"
+      05IoTDevice:
+        name: "IoT Device (admin)"
+        ip: "192.168.1.21"
+        ssh: "admin"
+        lftp: "admin"
+      06HomePC:
+        name: "Home PC (user)"
+        ip: "192.168.1.22"
+        ssh: "user"
+        lftp: "user"
+      07Laptop:
+        name: "Laptop (user)"
+        ip: "192.168.1.23"
+        ssh: "user"
+        lftp: "user"
 
+    02Remote:
+      01ExampleDomain1:
+        name: "example1.com (admin)"
+        ip: "example1.com"
+        ssh: "admin"
+        lftp: "admin"
+      02ExampleDomain2:
+        name: "example2.com (admin)"
+        ip: "example2.com"
+        ssh: "admin"
+      03ExampleDomain3:
+        name: "example3.com (admin)"
+        ip: "example3.com"
+        ssh: "admin"
+        lftp: "admin"
+      04ExampleVPN:
+        name: "examplevpn.com OpenVPN (admin)"
+        ip: "examplevpn.com"
+        ssh: "admin"
+        lftp: "admin"
+      05ExampleCert:
+        name: "examplecert.com (admin)"
+        ip: "examplecert.com"
+        ssh: "admin"
+        lftp: "admin"
+      06ExampleDB:
+        name: "exampledb.com (admin)"
+        ip: "exampledb.com"
+        ssh: "admin"
+        lftp: "admin"
+      07ExampleDomain4:
+        name: "example4.com (user)"
+        ip: "example4.com"
+        ssh: "user"
+        lftp: "user"
 
-
-
-
-
-
-
-
-
-
-
-
+    04VirtualServer:
+      01ExampleCloud:
+        name: "cloud.example.de (admin)"
+        ip: "192.168.1.30"
+        ssh: "admin"
+        lftp: "admin"
+      02ExampleVault:
+        name: "vault.example.de (admin)"
+        ip: "192.168.1.31"
+        ssh: "admin"
+        lftp: "admin"
+      03ExampleFreetz:
+        name: "freetz.example.de (admin)"
+        ip: "192.168.1.32"
+        ssh: "admin"
+        lftp: "admin"
 
 
