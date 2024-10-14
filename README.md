@@ -43,6 +43,9 @@ This Bash script facilitates connecting to multiple servers by providing a user-
 - `DEBUGOUT`: Enable or disable debug messages.
 - `GSTEP`: Server index group offset.
 - `INPWAIT`: Timeout for automatic connection type selection.
+
+
+### A lot of server to manage?
 `GSTEP`: By default set to 10. If you plan to have more than 10 server in a single group increase this number accordingly
 
 ## Included Script
