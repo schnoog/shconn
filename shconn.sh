@@ -14,6 +14,7 @@
 # 1. Modify the configuration file located at 
 #    ~/.shconfig.yml or /etc/.shconfig.yml to define 
 #    server details.
+#    If the file is available in both directories, thah in ~/ will be used
 # 2. Execute the script to display a list of servers.
 # 3. Select the desired server by entering the corresponding 
 #    number.
@@ -56,10 +57,10 @@
 # ===========================================================
 # Define number of columns per table
 NUM_COLS=2          # Change this to your preferred number of columns
-AUTO_COLS=false     # Calculating the number of columns based on the length 
+AUTO_COLS=true     # Calculating the number of columns based on the length 
                     # of the labels and terminal width overwriting NUM_COLS
 DEBUGOUT=false      # Set to 'true' to enable debugging output, 'false' to disable
-GSTEP=100           # Group offset for server index. 
+GSTEP=10           # Group offset for server index. 
                     # 10 = Group 1 starts with 1, Group 2 with 11, Group 3 with 21
                     # 100 = Group 1 starts with 1, Group 2 with 101, Group 3 with 201
 INPWAIT=5           # if ssh and lftp are available for a server after this number of
