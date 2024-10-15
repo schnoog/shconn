@@ -354,11 +354,14 @@ function ShowInfo(){
     if [ "$1" != "" ]
     then
         echo "Error: $1"
+        echo ""
     fi
-    echo "Usage: ./"$0" [serverid]"
+    echo "Usage: "$(basename $0)" [serverid]"
+    echo ""
     echo "If no serverid is provided a menu with the available server will be displayed"
     echo "If provided this will be skipped and a connection prepared" 
-
+    echo ""
+    echo "Used configuration file "$(realpath "$CONFIG")
 
 }
 
@@ -593,7 +596,7 @@ if [[ ! $1 =~ ^[0-9]+$ ]]; then
 
 
     else
-        ShowInfo "(yet) Unknown argument"
+        ShowInfo "(yet) Unknown argument '$1'"
 
     fi
 
