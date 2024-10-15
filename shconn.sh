@@ -102,9 +102,11 @@ fi
 #
 ###############################################################################
 
-# ----------------------------------------
-# Function to Print Debug Messages
-# ----------------------------------------
+### ----------------------------------------
+### ----------------------------------------
+### Function to Print Debug Messages
+### ----------------------------------------
+### ----------------------------------------
 
 debug() {
   if [ "$DEBUGOUT" = true ]; then
@@ -112,9 +114,11 @@ debug() {
   fi
 }
 
-# ----------------------------------------
-# Function to Print Tables
-# ----------------------------------------
+### ----------------------------------------
+### ----------------------------------------
+### Function to Print Tables
+### ----------------------------------------
+### ----------------------------------------
 
 print_tables() {
   local current_label=1
@@ -172,9 +176,11 @@ print_tables() {
   done
 }
 
-# ----------------------------------------
-# Function to get chunks out of the config
-# ----------------------------------------
+### ----------------------------------------
+### ----------------------------------------
+### Function to get chunks out of the config
+### ----------------------------------------
+### ----------------------------------------
 
 
 GetParts(){
@@ -184,9 +190,183 @@ GetParts(){
 }
 
 
-# ----------------------------------------
-# External function. Copied in to have only one file
-# ----------------------------------------
+### ----------------------------------------
+### ----------------------------------------
+### Function to generate the displayed menu
+### ----------------------------------------
+### ----------------------------------------
+
+function MenuGenerator(){
+    # ----------------------------------------
+    # Going through groups
+    # ----------------------------------------
+    PARTS=$(GetParts "$SETTINGS" "3")
+    for PART in $PARTS
+    do
+        let NUMHEAD=$NUMHEAD+1
+        SECOUT=$(echo "$PART" | cut -d "_" -f 3)
+        HEADERS+=( "${SECOUT:2}" )
+        HLABEL="${SECOUT:2}"
+        LABELARR[$NUMHEAD]="${SECOUT:2}"
+            SCOUNT=0    
+            SECS=$(GetParts "$SETTINGS" 4 | grep "^$PART" | uniq)
+    # - # ---------------------------------------
+    # - # Going though the servers and adding those of the group to the array
+    # - # ---------------------------------------
+
+            for SEC in $SECS
+            do
+                let SCOUNT=$SCOUNT+1
+                let IND=$SCOUNT+$GCOUNT
+                HOSTDATA=$(echo "$SETTINGS" | grep "^$SEC""_" | grep -v '_=' )
+                    hname=$(echo "$HOSTDATA" | grep '_name=' | cut -d "'" -f 2)
+                    hip=$(echo "$HOSTDATA" | grep '_ip=' | cut -d "'" -f 2)
+                    hssh=$(echo "$HOSTDATA" | grep '_ssh='| cut -d "'" -f 2)
+                    hlftp=$(echo "$HOSTDATA" | grep '_lftp=' | cut -d "'" -f 2)
+                SP=""
+                if [ $IND -lt 10 ]
+                then
+                    SP=" "
+                fi 
+                LFTPIND=""
+                if [ "$hlftp" != "" ]
+                then
+                    LFTPIND="(+lftp)"
+                fi
+                SERVERS+=( "$SP("$IND") $hname $LFTPIND" )
+                SSTR="$SP("$IND") $hname $LFTPIND"
+                SERVERARR[$NUMHEAD,$SCOUNT]="$SSTR"
+                CURRLEN=${#SSTR}
+                if [ $CURRLEN -gt $MLEN ]; then MLEN=$CURRLEN; fi
+            done
+    # - # ---------------------------------------
+        let GCOUNT=$GCOUNT+$GSTEP
+    done
+    # ----------------------------------------
+
+
+    # ----------------------------------------
+    # Applying AUTO_COLS if true
+    # ----------------------------------------
+
+    if [ "$AUTO_COLS" = true ]
+    then
+        terminal_width=$(tput cols)
+        NUM_COLS=$((terminal_width / MLEN))
+    fi
+
+    # ----------------------------------------
+    # Ouput prompt
+    # ----------------------------------------
+    echo "Select server to connect to"
+    print_tables
+}
+
+
+### ----------------------------------------
+### ----------------------------------------
+### Function to work on numeric input
+### ----------------------------------------
+### ----------------------------------------
+
+function SelectionWork(){
+    GCOUNT=0
+    SCOUNT=0
+    FOUND=0
+    # ----------------------------------------
+    # Going through groups
+    # ----------------------------------------
+    PARTS=$(GetParts "$SETTINGS" "3")
+    for PART in $PARTS
+    do
+            SCOUNT=0
+    # - # ---------------------------------------
+    # - # Going though the servers and find the one matching to answ
+    # - # ---------------------------------------            
+            SECS=$(GetParts "$SETTINGS" 4 | grep "^$PART" )
+            for SEC in $SECS
+            do
+                let SCOUNT=$SCOUNT+1
+                let IND=$SCOUNT+$GCOUNT
+    # - # - # ---------------------------------------
+    # - # - # We found it
+    # - # - # ---------------------------------------
+                if [ "$IND" == "$ANSW" ]
+                then
+                    FOUND=1
+                    HOSTDATA=$(echo "$SETTINGS" | grep "^$SEC""_" | grep -v '_=' )
+                        hname=$(echo "$HOSTDATA" | grep '_name=' | cut -d "'" -f 2)
+                        hip=$(echo "$HOSTDATA" | grep '_ip=' | cut -d "'" -f 2)
+                        hssh=$(echo "$HOSTDATA" | grep '_ssh='| cut -d "'" -f 2)
+                        hlftp=$(echo "$HOSTDATA" | grep '_lftp=' | cut -d "'" -f 2)
+                        SSTR="$SP("$IND") $hname"
+    # - # - # ---------------------------------------
+    # - # - # if lftp is set, give the user the option to select it, with timeout to ssh default
+    # - # - # --------------------------------------- 
+
+                        if [ "$hlftp" != "" ]
+                        then
+                            echo "Connection type for $SSTR"
+                            echo "(1) SSH [default - automatically selected in $INPWAIT seconds]"
+                            echo "(2) LFTP"
+                            read -t $INPWAIT b
+                            if [ "$b" == "2" ]
+                            then
+                                echo "Connecting to: $SSTR - lftp"
+                                CS="sftp://""$hip"
+                                lftp -u "$hlftp", "$CS"
+                            else
+                                echo "Connecting to: $SSTR - ssh"
+                                CS="$hssh""@""$hip"
+                                ssh "$CS"
+                            fi
+                        else
+                            echo "Connecting to: $SSTR - ssh"
+                            CS="$hssh""@""$hip"
+                            ssh "$CS"
+                        fi
+    # - # - # ---------------------------------------                     
+                fi
+    # - # - # ---------------------------------------             
+            done
+    # - # ---------------------------------------         
+        let GCOUNT=$GCOUNT+$GSTEP
+    done
+    # ----------------------------------------
+
+
+    # ----------------------------------------
+    # Server not found? Let the user know about it
+    # ----------------------------------------
+    if [ "$FOUND" != "1" ]
+    then
+        echo "-not a valid selection-"
+    fi
+
+}
+
+### ----------------------------------------
+### ----------------------------------------
+### Display a little info
+### ----------------------------------------
+### ----------------------------------------
+function ShowInfo(){
+    if [ "$1" != "" ]
+    then
+        echo "Error: $1"
+    fi
+    echo "Usage: ./"$0" [serverid]"
+    echo "If no serverid is provided a menu with the available server will be displayed"
+    echo "If provided this will be skipped and a connection prepared" 
+
+
+}
+
+### ----------------------------------------
+### ----------------------------------------
+### External function. Copied in to have only one file
+### ----------------------------------------
+### ----------------------------------------
 
 ###############################################################################
 #
@@ -360,6 +540,13 @@ function parse_yaml {
 # Here ends the external function. 
 # ----------------------------------------
 
+### ----------------------------------------
+### ----------------------------------------
+### ----------------------------------------
+### End of functions
+### ----------------------------------------
+### ----------------------------------------
+### ----------------------------------------
 
 
 
@@ -378,162 +565,66 @@ function parse_yaml {
 # ----------------------------------------
 SETTINGS=$(parse_yaml "$CONFIG")
 # ----------------------------------------
-# 
+# Set some variables
 # ----------------------------------------
 GCOUNT=0
 MLEN=0
 MAXINROW=3
 NUMHEAD=0
 HL=""
-# ----------------------------------------
-# Going through groups
-# ----------------------------------------
-PARTS=$(GetParts "$SETTINGS" "3")
-for PART in $PARTS
-do
-    let NUMHEAD=$NUMHEAD+1
-    SECOUT=$(echo "$PART" | cut -d "_" -f 3)
-    HEADERS+=( "${SECOUT:2}" )
-    HLABEL="${SECOUT:2}"
-    LABELARR[$NUMHEAD]="${SECOUT:2}"
-        SCOUNT=0    
-        SECS=$(GetParts "$SETTINGS" 4 | grep "^$PART" | uniq)
-# - # ---------------------------------------
-# - # Going though the servers and adding those of the group to the array
-# - # ---------------------------------------
 
-        for SEC in $SECS
-        do
-            let SCOUNT=$SCOUNT+1
-            let IND=$SCOUNT+$GCOUNT
-            HOSTDATA=$(echo "$SETTINGS" | grep "^$SEC""_" | grep -v '_=' )
-                hname=$(echo "$HOSTDATA" | grep '_name=' | cut -d "'" -f 2)
-                hip=$(echo "$HOSTDATA" | grep '_ip=' | cut -d "'" -f 2)
-                hssh=$(echo "$HOSTDATA" | grep '_ssh='| cut -d "'" -f 2)
-                hlftp=$(echo "$HOSTDATA" | grep '_lftp=' | cut -d "'" -f 2)
-            SP=""
-            if [ $IND -lt 10 ]
+
+# ----------------------------------------
+# Work on script arguments
+# ----------------------------------------
+
+
+if [[ ! $1 =~ ^[0-9]+$ ]]; then
+    if [ "$1" == "" ]
+    then
+        MenuGenerator
+        read ANSW
+            if [ "$ANSW" == "" ]
             then
-                SP=" "
-            fi 
-            LFTPIND=""
-             if [ "$hlftp" != "" ]
-             then
-                LFTPIND="(+lftp)"
-             fi
-            SERVERS+=( "$SP("$IND") $hname $LFTPIND" )
-            SSTR="$SP("$IND") $hname $LFTPIND"
-            SERVERARR[$NUMHEAD,$SCOUNT]="$SSTR"
-            CURRLEN=${#SSTR}
-            if [ $CURRLEN -gt $MLEN ]; then MLEN=$CURRLEN; fi
-        done
-# - # ---------------------------------------
-    let GCOUNT=$GCOUNT+$GSTEP
-done
-# ----------------------------------------
+                echo "Not a valid selection (numbers only)"
+                exit 0
+            fi        
+        SelectionWork        
 
 
-# ----------------------------------------
-# Applying AUTO_COLS if true
-# ----------------------------------------
+    else
+        ShowInfo "(yet) Unknown argument"
 
-if [ "$AUTO_COLS" = true ]
-then
-    terminal_width=$(tput cols)
-    NUM_COLS=$((terminal_width / MLEN))
+    fi
+
+
+
+
+
+else
+    #Numeric
+    ANSW=$1
+    SelectionWork
+
 fi
 
-# ----------------------------------------
-# Ouput prompt
-# ----------------------------------------
-echo "Select server to connect to"
-print_tables
 
+
+
+
+
+#MenuGenerator
 # ----------------------------------------
 # Wait for answer
 # ----------------------------------------
 
-read ANSW
+#read ANSW
 
-
+#SelectionWork
 # ----------------------------------------
 # Drop out if answer is empty
 # ----------------------------------------
-if [ "$ANSW" == "" ]
-then
-    echo "Not a valid selection (numbers only)"
-    exit 0
-fi
 
 
 
 
-GCOUNT=0
-SCOUNT=0
-FOUND=0
-# ----------------------------------------
-# Going through groups
-# ----------------------------------------
-PARTS=$(GetParts "$SETTINGS" "3")
-for PART in $PARTS
-do
-        SCOUNT=0
-# - # ---------------------------------------
-# - # Going though the servers and find the one matching to answ
-# - # ---------------------------------------            
-        SECS=$(GetParts "$SETTINGS" 4 | grep "^$PART" )
-        for SEC in $SECS
-        do
-            let SCOUNT=$SCOUNT+1
-            let IND=$SCOUNT+$GCOUNT
-# - # - # ---------------------------------------
-# - # - # We found it
-# - # - # ---------------------------------------
-            if [ "$IND" == "$ANSW" ]
-            then
-                FOUND=1
-                HOSTDATA=$(echo "$SETTINGS" | grep "^$SEC""_" | grep -v '_=' )
-                    hname=$(echo "$HOSTDATA" | grep '_name=' | cut -d "'" -f 2)
-                    hip=$(echo "$HOSTDATA" | grep '_ip=' | cut -d "'" -f 2)
-                    hssh=$(echo "$HOSTDATA" | grep '_ssh='| cut -d "'" -f 2)
-                    hlftp=$(echo "$HOSTDATA" | grep '_lftp=' | cut -d "'" -f 2)
-
-# - # - # ---------------------------------------
-# - # - # if lftp is set, give the user the option to select it, with timeout to ssh default
-# - # - # --------------------------------------- 
-
-                    if [ "$hlftp" != "" ]
-                    then
-                        echo "Connection type"
-                        echo "(1) SSH [default - automatically selected in $INPWAIT seconds]"
-                        echo "(2) LFTP"
-                        read -t $INPWAIT b
-                        if [ "$b" == "2" ]
-                        then
-                            CS="sftp://""$hip"
-                            lftp -u "$hlftp", "$CS"
-                        else
-                            CS="$hssh""@""$hip"
-                            ssh "$CS"
-                        fi
-                    else
-                        CS="$hssh""@""$hip"
-                        ssh "$CS"
-                    fi
-# - # - # ---------------------------------------                     
-            fi
-# - # - # ---------------------------------------             
-        done
-# - # ---------------------------------------         
-    let GCOUNT=$GCOUNT+$GSTEP
-done
-# ----------------------------------------
-
-
-# ----------------------------------------
-# Server not found? Let the user know about it
-# ----------------------------------------
-if [ "$FOUND" != "1" ]
-then
-    echo "-not a valid selection-"
-fi
