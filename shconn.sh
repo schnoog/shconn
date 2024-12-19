@@ -98,10 +98,41 @@ else
 fi
 ###############################################################################
 #
-# Functions
+# Rights elevation settings for mount
+#
+###############################################################################
+ELE=/usr/bin/sudo
+if [ "$(echo $UID)" == "0" ]
+then
+    ELE=""
+fi
+###############################################################################
+#
+# Mount directorry
 #
 ###############################################################################
 
+MNTDIR="/media/$USER/shmount"
+
+
+###############################################################################
+#
+# Functions
+#
+###############################################################################
+print_r() {
+    local -n xxarr=$1
+    local xxprefix=${2:-}
+    for xxkey in "${!xxarr[@]}"; do
+        if [[ ${xxarr[$xxkey]} =~ ^declare\ -A ]]; then
+            echo "${xxprefix}[$xxkey] => (xxarray)"
+            local -n sub_xxarr=${xxarr[$xxkey]}
+            print_r sub_xxarr "  $xxprefix[$xxkey]"
+        else
+            echo "${xxprefix}[$xxkey] => ${xxarr[$xxkey]}"
+        fi
+    done
+}
 ### ----------------------------------------
 ### ----------------------------------------
 ### Function to Print Debug Messages
@@ -223,18 +254,26 @@ function MenuGenerator(){
                     hip=$(echo "$HOSTDATA" | grep '_ip=' | cut -d "'" -f 2)
                     hssh=$(echo "$HOSTDATA" | grep '_ssh='| cut -d "'" -f 2)
                     hlftp=$(echo "$HOSTDATA" | grep '_lftp=' | cut -d "'" -f 2)
+                    hmnt=$(echo "$HOSTDATA" | grep '_mount=' | cut -d "'" -f 2)
                 SP=""
+                #echo $HOSTDATA
+                #echo "---------------------------------------------------"
                 if [ $IND -lt 10 ]
                 then
                     SP=" "
                 fi 
                 LFTPIND=""
+                MNTPIND=""
                 if [ "$hlftp" != "" ]
                 then
                     LFTPIND="(+lftp)"
                 fi
-                SERVERS+=( "$SP("$IND") $hname $LFTPIND" )
-                SSTR="$SP("$IND") $hname $LFTPIND"
+                if [ "$hmnt" != "" ]
+                then
+                    MNTPIND="(+mount)"
+                fi                
+                SERVERS+=( "$SP("$IND") $hname $LFTPIND $MNTPIND" )
+                SSTR="$SP("$IND") $hname $LFTPIND $MNTPIND"
                 SERVERARR[$NUMHEAD,$SCOUNT]="$SSTR"
                 CURRLEN=${#SSTR}
                 if [ $CURRLEN -gt $MLEN ]; then MLEN=$CURRLEN; fi
@@ -261,6 +300,99 @@ function MenuGenerator(){
     echo "Select server to connect to"
     print_tables
 }
+
+### ----------------------------------------
+### ----------------------------------------
+### Functions finally called
+### ----------------------------------------
+### ----------------------------------------
+function TMIsMounted {
+    ret=1
+    mount | grep "$MNTDIR" >/dev/null && ret=0
+    return $ret
+}
+
+
+function TMUnmount {
+    ret=1
+    $ELE umount "$MNTDIR" && ret=0
+    return $ret
+}
+#$MNTDIR
+
+function TMMount {
+    LINE=$*
+    MLABEL=$(echo "$LINE" | cut -d '|' -f 1)
+    MUSER=$(echo "$LINE" | cut -d '|' -f 2)
+    MHOST=$(echo "$LINE" | cut -d '|' -f 3)
+    MDIR=$(echo "$LINE" | cut -d '|' -f 4)
+
+    CONNSTR="$MUSER""@""$MHOST"":""$MDIR"
+    ret=1
+    echo "$MLABEL  -- $CONNSTR"
+    sudo sshfs -o $TM_MOPTS "$CONNSTR" "$TM_MDIR" && ret=0
+    return $ret
+}
+
+call_ssh(){
+    echo "Calling ssh $@"
+    ssh "$@"
+}
+
+call_lftp(){
+    echo "Calling lftp -u $1, $2"
+    lftp -u "$1", "$2"
+}
+
+call_mount(){
+    if [ "$1" == "" ]
+    then
+        echo "Invalid selection"
+        return 1
+    fi
+
+    TM_MOPTS="allow_other,default_permissions,uid=$(id -u),gid=$(id -g)"
+    mntuser=$(echo "$1" | cut -d ":" -f 1)
+    mnttype=$(echo "$1" | cut -d ":" -f 2)
+    mntdir=$(echo "$1" | cut -d ":" -f 3)
+    mhost="$2"
+    domount=0
+    IsMounted=0
+    TMIsMounted && IsMounted=1
+    if [ "$IsMounted" == "1" ]
+    then
+        echo "There's already something mounted to $MNTDIR"
+        echo "Should it be unmounted in order to proceed?"
+        echo "Unmounting? (y/n)"
+        read ShouldUnmount
+        if [ "$ShouldUnmount" == "y" ]
+        then
+            TMUnmount && domount=1
+        else
+            echo "Ok, aborting without mounting"
+        fi        
+    else
+        domount=1
+    fi
+    
+    if [ "$domount" == "1" ]
+    then
+        $ELE $mnttype -o $TM_MOPTS "$mntuser""@""$mhost"":""$mntdir" "$MNTDIR" 
+    fi
+
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 ### ----------------------------------------
@@ -299,32 +431,101 @@ function SelectionWork(){
                         hip=$(echo "$HOSTDATA" | grep '_ip=' | cut -d "'" -f 2)
                         hssh=$(echo "$HOSTDATA" | grep '_ssh='| cut -d "'" -f 2)
                         hlftp=$(echo "$HOSTDATA" | grep '_lftp=' | cut -d "'" -f 2)
+                        hmnt=$(echo "$HOSTDATA" | grep '_mount=' | cut -d "'" -f 2)                        
                         SSTR="$SP("$IND") $hname"
     # - # - # ---------------------------------------
     # - # - # if lftp is set, give the user the option to select it, with timeout to ssh default
     # - # - # --------------------------------------- 
+                    AddSvc=0;
+                    if [ "$hlftp" != "" ]
+                    then
+                        let AddSvc=$AddSvc+1
+                    fi
+                    if [ "$hmnt" != "" ]
+                    then
+                        let AddSvc=$AddSvc+1
+                    fi                          
 
-                        if [ "$hlftp" != "" ]
-                        then
+                    if [ $AddSvc -gt 0 ]
+                    then
                             echo "Connection type for $SSTR"
                             echo "(1) SSH [default - automatically selected in $INPWAIT seconds]"
-                            echo "(2) LFTP"
-                            read -t $INPWAIT b
-                            if [ "$b" == "2" ]
+                            svcnt=1
+
+                            if [ "$hlftp" != "" ]
                             then
-                                echo "Connecting to: $SSTR - lftp"
-                                CS="sftp://""$hip"
-                                lftp -u "$hlftp", "$CS"
-                            else
-                                echo "Connecting to: $SSTR - ssh"
-                                CS="$hssh""@""$hip"
-                                ssh "$CS"
+                                let svcnt=$svcnt+1
+                                echo "($svcnt) LFTP"
                             fi
-                        else
-                            echo "Connecting to: $SSTR - ssh"
-                            CS="$hssh""@""$hip"
-                            ssh "$CS"
-                        fi
+                            if [ "$hmnt" != "" ]
+                            then
+                                let svcnt=$svcnt+1
+                                echo "($svcnt) Mount"                            
+
+                            fi    
+
+                            read -t $INPWAIT b
+                            if [ "$b" == "1" ]
+                            then
+                                #echo "Connecting to: $SSTR - ssh"
+                                call_ssh "$hssh""@""$hip"
+
+                            else
+                                if [ "$b" == "2" ]
+                                then
+
+                                    if [ "$hlftp" != "" ]
+                                    then
+  #                                      echo "calling lftp"
+                                        #                                CS="sftp://""$hip"
+                                        #lftp -u "$hlftp", "$CS"
+                                        call_lftp "$hlftp" "sftp://""$hip"
+                                    else
+ #                                       echo "calling mount"
+                                        call_mount "$hmnt" "$hip"
+                                    fi
+                                else
+                                    if [ "$b" == "3" ]
+                                    then
+#                                        echo "calling mount"
+                                        call_mount "$hmnt" "$hip"
+
+                                    else
+                                        echo "Invalid selection"
+                                    fi
+
+
+                                fi
+        
+        
+        
+        
+        
+                            fi                            
+
+
+
+
+
+
+
+
+
+                    else
+
+                            #echo "Connecting to: $SSTR - ssh"
+#                            CS="$hssh""@""$hip"
+                            call_ssh "$hssh""@""$hip"
+#                            ssh "$CS"
+
+
+
+                    fi
+
+
+
+
+
     # - # - # ---------------------------------------                     
                 fi
     # - # - # ---------------------------------------             
@@ -586,7 +787,16 @@ if [[ ! $1 =~ ^[0-9]+$ ]]; then
     if [ "$1" == "" ]
     then
         MenuGenerator
+        TMIsMounted && echo "There's already something mounted to $MNTDIR" && echo "Enter u to unmount and exit"
+
+
         read ANSW
+            if [ "$ANSW" == "u" ]
+            then
+                TMUnmount
+                exit 0
+            fi
+
             if [ "$ANSW" == "" ]
             then
                 echo "Not a valid selection (numbers only)"
