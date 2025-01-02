@@ -553,15 +553,11 @@ function ShowInfo(){
         echo "Error: $1"
         echo ""
     fi
-    echo "Usage: "$(basename $0)" [serverid] [serviceid]"
+    echo "Usage: "$(basename $0)" [serverid]"
     echo ""
     echo "If no serverid is provided a menu with the available server will be displayed"
-    echo "If provided this will be skipped and a" 
-    echo " - if only ssh is configured for the selected host create the ssh connection "
-    echo " - if other services are defined a selection for the service to use is shown"
-    echo "If a serviceid is provided (1=ssh, 2=lftp, 3=mount....) the connection will be established immediately"
+    echo "If provided this will be skipped and a connection prepared" 
     echo ""
-
     echo "Used configuration file "$(realpath "$CONFIG")
 
 }
@@ -787,7 +783,7 @@ case "$1" in
         if [[ "$1" =~ ^-?[uU]$ ]]; then
             TMIsMounted && TMUnmount && echo "Unmounted $MNTDIR" && exit 0
         elif [[ "$1" =~ ^-?[hH]$ ]]; then
-            ShowInfo
+            echo "Case 3: Input is 'h', 'H', '-h', or '-H'."
         else
 
             MenuGenerator
