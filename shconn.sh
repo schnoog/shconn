@@ -320,19 +320,6 @@ function TMUnmount {
 }
 #$MNTDIR
 
-function TMMount {
-    LINE=$*
-    MLABEL=$(echo "$LINE" | cut -d '|' -f 1)
-    MUSER=$(echo "$LINE" | cut -d '|' -f 2)
-    MHOST=$(echo "$LINE" | cut -d '|' -f 3)
-    MDIR=$(echo "$LINE" | cut -d '|' -f 4)
-
-    CONNSTR="$MUSER""@""$MHOST"":""$MDIR"
-    ret=1
-    echo "$MLABEL  -- $CONNSTR"
-    sudo sshfs -o $TM_MOPTS "$CONNSTR" "$TM_MDIR" && ret=0
-    return $ret
-}
 
 call_ssh(){
     echo "Calling ssh $@"
@@ -351,7 +338,7 @@ call_mount(){
         return 1
     fi
 
-    TM_MOPTS="allow_other,default_permissions,uid=$(id -u),gid=$(id -g)"
+    TM_MOPTS="PubkeyAcceptedKeyTypes=+ssh-rsa,allow_other,default_permissions,uid=$(id -u),gid=$(id -g)"
     mntuser=$(echo "$1" | cut -d ":" -f 1)
     mnttype=$(echo "$1" | cut -d ":" -f 2)
     mntdir=$(echo "$1" | cut -d ":" -f 3)
@@ -377,11 +364,14 @@ call_mount(){
     
     if [ "$domount" == "1" ]
     then
-        $ELE $mnttype -o $TM_MOPTS "$mntuser""@""$mhost"":""$mntdir" "$MNTDIR" 
+        if [[ $mhost =~ : ]]; then
+            mhost="[$mhost]"
+        fi    
+        #echo "$ELE $mnttype -o $TM_MOPTS $mntuser@$mhost:$mntdir $MNTDIR" 
+        $ELE $mnttype -v -o $TM_MOPTS "$mntuser""@""$mhost"":""$mntdir" "$MNTDIR" && echo "mounted to $MNTDIR"
     fi
 
 }
-
 
 
 
@@ -806,8 +796,12 @@ if [[ ! $1 =~ ^[0-9]+$ ]]; then
 
 
     else
-        ShowInfo "(yet) Unknown argument '$1'"
-
+        if [ "$1" == "u" ]
+        then
+            TMIsMounted && TMUnmount && echo "Unmounted $MNTDIR"
+        else
+            ShowInfo "(yet) Unknown argument '$1'"
+        fi
     fi
 
 
