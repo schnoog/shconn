@@ -65,7 +65,7 @@ GSTEP=10           # Group offset for server index.
                     # 100 = Group 1 starts with 1, Group 2 with 101, Group 3 with 201
 INPWAIT=5           # if ssh and lftp are available for a server after this number of
                     # seconds it will automatically switch to ssh
-
+COLORED=true        # set to false for uncolored output
 
 
 # ===========================================================
@@ -114,6 +114,61 @@ fi
 
 MNTDIR="/media/$USER/shmount"
 
+###############################################################################
+#
+# Colors, who doesn't love colors?
+#
+###############################################################################
+
+
+
+
+COLOR_NC='\e[0m' # No Color
+COLOR_BLACK='\e[0;30m'
+COLOR_GRAY='\e[1;30m'
+COLOR_RED='\e[0;31m'
+COLOR_LIGHT_RED='\e[1;31m'
+COLOR_GREEN='\e[0;32m'
+COLOR_LIGHT_GREEN='\e[1;32m'
+COLOR_BROWN='\e[0;33m'
+COLOR_YELLOW='\e[1;33m'
+COLOR_BLUE='\e[0;34m'
+COLOR_LIGHT_BLUE='\e[1;34m'
+COLOR_PURPLE='\e[0;35m'
+COLOR_LIGHT_PURPLE='\e[1;35m'
+COLOR_CYAN='\e[0;36m'
+COLOR_LIGHT_CYAN='\e[1;36m'
+COLOR_LIGHT_GRAY='\e[0;37m'
+COLOR_WHITE='\e[1;37m'
+
+
+if [ "$COLORED" = false ]
+then
+    COLOR_NC=''
+    COLOR_BLACK=''
+    COLOR_GRAY=''
+    COLOR_RED=''
+    COLOR_LIGHT_RED=''
+    COLOR_GREEN=''
+    COLOR_LIGHT_GREEN=''
+    COLOR_BROWN=''
+    COLOR_YELLOW=''
+    COLOR_BLUE=''
+    COLOR_LIGHT_BLUE=''
+    COLOR_PURPLE=''
+    COLOR_LIGHT_PURPLE=''
+    COLOR_CYAN=''
+    COLOR_LIGHT_CYAN=''
+    COLOR_LIGHT_GRAY=''
+    COLOR_WHITE=''
+
+fi
+
+CRS=$COLOR_LIGHT_GREEN
+CRE=$COLOR_NC
+CRW=$COLOR_LIGHT_RED
+CRH=$COLOR_YELLOW
+CRN=$COLOR_LIGHT_BLUE
 
 ###############################################################################
 #
@@ -171,7 +226,7 @@ print_tables() {
     output=""
     # Add headers
     for col in $(seq "$current_label" "$end_label"); do
-      output+="${LABELARR[$col]}\t"
+      output+="$CRH${LABELARR[$col]}$CRE\t"
     done
     output+="\n"  # Newline after headers
     
@@ -264,18 +319,43 @@ function MenuGenerator(){
                 fi 
                 LFTPIND=""
                 MNTPIND=""
+                ALBL=""
                 if [ "$hlftp" != "" ]
                 then
-                    LFTPIND="(+lftp)"
+                    ALBL="lftp"
                 fi
                 if [ "$hmnt" != "" ]
                 then
-                    MNTPIND="(+mount)"
-                fi                
-                SERVERS+=( "$SP("$IND") $hname $LFTPIND $MNTPIND" )
-                SSTR="$SP("$IND") $hname $LFTPIND $MNTPIND"
+                    if [ "$ALBL" == "" ]
+                    then
+                       ALBL="mount"
+                    else
+                       ALBL="$ALBL"",mount"
+                    fi
+                fi 
+                if [ "$ALBL" != "" ]
+                then
+                    ALBL="(""$ALBL"")"
+                fi
+
+                if [ "$hlftp" != "" ]
+                then
+                    LFTPIND="+lftp"
+                fi
+                if [ "$hmnt" != "" ]
+                then
+                        MNTPIND="+mount"
+                fi            
+                #
+#"$CRN" "$CRE"
+                SERVERS+=( "$SP("$IND") $hname $ALBL" )
+                SSTR="$SP("$CRS""$IND""$CRE") "$CRN"$hname"$CRE" $ALBL"
                 SERVERARR[$NUMHEAD,$SCOUNT]="$SSTR"
                 CURRLEN=${#SSTR}
+                let CURRLEN=$CURRLEN-${#CRS}
+                let CURRLEN=$CURRLEN-${#CRE}
+                let CURRLEN=$CURRLEN-${#CRN}
+                let CURRLEN=$CURRLEN-${#CRE}
                 if [ $CURRLEN -gt $MLEN ]; then MLEN=$CURRLEN; fi
             done
     # - # ---------------------------------------
@@ -292,6 +372,7 @@ function MenuGenerator(){
     then
         terminal_width=$(tput cols)
         NUM_COLS=$((terminal_width / MLEN))
+        #let NUM_COLS=$NUM_COLS+1
     fi
 
     # ----------------------------------------
@@ -487,7 +568,12 @@ function SelectionWork(){
                                         call_mount "$hmnt" "$hip"
 
                                     else
-                                        echo "Invalid selection"
+                                        if [ "$b" == "" ]
+                                        then
+                                            call_ssh "$hssh""@""$hip"
+                                        else
+                                            echo -e "$CRW Invalid service selection $CRE"
+                                        fi
                                     fi
 
 
@@ -537,7 +623,7 @@ function SelectionWork(){
     # ----------------------------------------
     if [ "$FOUND" != "1" ]
     then
-        echo "-not a valid selection-"
+        echo -e "$CRW -not a valid server selection- $CRE"
     fi
 
 }
@@ -553,11 +639,15 @@ function ShowInfo(){
         echo "Error: $1"
         echo ""
     fi
-    echo "Usage: "$(basename $0)" [serverid]"
+    echo "Usage: "$(basename $0)" [serverid] [serviceid]"
     echo ""
     echo "If no serverid is provided a menu with the available server will be displayed"
-    echo "If provided this will be skipped and a connection prepared" 
+    echo "If provided this will be skipped and a" 
+    echo " - if only ssh is configured for the selected host create the ssh connection "
+    echo " - if other services are defined a selection for the service to use is shown"
+    echo "If a serviceid is provided (1=ssh, 2=lftp, 3=mount....) the connection will be established immediately"
     echo ""
+
     echo "Used configuration file "$(realpath "$CONFIG")
 
 }
@@ -783,12 +873,15 @@ case "$1" in
         if [[ "$1" =~ ^-?[uU]$ ]]; then
             TMIsMounted && TMUnmount && echo "Unmounted $MNTDIR" && exit 0
         elif [[ "$1" =~ ^-?[hH]$ ]]; then
-            echo "Case 3: Input is 'h', 'H', '-h', or '-H'."
+            ShowInfo
         else
 
             MenuGenerator
             TMIsMounted && echo "There's already something mounted to $MNTDIR" && echo "Enter u to unmount and exit"
-            read ANSW
+            
+            read ANSW_ARRAY # Read input as an array
+            ANSW=$(echo "$ANSW_ARRAY" | awk '{print $1}' ) 
+            #read ANSW
                 if [ "$ANSW" == "u" ]
                 then
                     TMUnmount
@@ -799,7 +892,12 @@ case "$1" in
                 then
                     echo "Not a valid selection (numbers only)"
                     exit 0
-                fi        
+                fi 
+            SPART=$(echo "$ANSW_ARRAY" | awk '{print $2}' )
+            if [ "$SPART" != "" ]
+            then
+                SSEL=$SPART
+            fi                        
             SelectionWork    
 
         fi
