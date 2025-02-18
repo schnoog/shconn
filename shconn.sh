@@ -108,6 +108,23 @@ then
 fi
 ###############################################################################
 #
+# We know we have the rights, let's get the newest version of this script
+#
+###############################################################################
+
+if [ "$1" == "update" ]
+then
+        URL="https://raw.githubusercontent.com/schnoog/shconn/refs/heads/main/shconn.sh"
+        $ELE wget -q -O /usr/bin/shconn.sh "$URL"
+        $ELE chmod +x /usr/bin/shconn.sh
+        echo "Script updated successfully."
+	exit 0
+fi
+
+
+
+###############################################################################
+#
 # Mount directorry
 #
 ###############################################################################
