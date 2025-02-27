@@ -29,12 +29,13 @@ Hosts:
         ip: "192.168.1.10"
         ssh: "root"
         lftp: "root"
-	      mount: "root:sshfs:/root"
+	mount: "root:sshfs:/root"
       02MediaServer:
         name: "Media Server (user)"
         ip: "192.168.1.11"
         ssh: "user"
         lftp: "user"
+	mount: "www-data:sshfs:/var/www"
       03PrintServer:
         name: "Print Server (root)"
         ip: "192.168.1.12"
