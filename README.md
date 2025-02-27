@@ -1,7 +1,7 @@
 # SHConn - A BASH Server Connection Manager
 
 ## Description
-This Bash script facilitates connecting to multiple servers by providing a user-friendly menu interface. It reads server configurations from a YAML file and organizes them into tables for easy selection. Users can connect to their desired server via SSH or LFTP, with options for automatic selection based on server availability as defined in the YAML file.
+This Bash script facilitates connecting to multiple servers by providing a user-friendly menu interface. It reads server configurations from a YAML file and organizes them into tables for easy selection. Users can connect to their desired server via SSH or LFTP, with options for automatic selection based on server availability as defined in the YAML file. Additionally it's possible to mount a remote directory (or /) into the local media folder.
 
 ## Features
 - Configurable number of columns for output tables.
@@ -34,8 +34,7 @@ This Bash script facilitates connecting to multiple servers by providing a user-
 1. Modify the configuration file located at `~/.shconfig.yml` or `/etc/.shconfig.yml` to define server details.
 2. Execute the script to display a list of servers.
 3. Select the desired server by entering the corresponding number.
-4. Choose the connection type (SSH or LFTP) if prompted.
-
+4. Choose the connection type (SSH, LFTP, or mount) if prompted.
 
 ## Configuration Variables
 - `NUM_COLS`: Number of columns to display in the server list.
